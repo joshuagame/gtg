@@ -97,5 +97,5 @@ if(BUILD_TESTING)
     target_link_libraries(gtg_tests PRIVATE gtg_core)
     gtg_enable_warnings(gtg_tests)
 
-    add_test(NAME gtg.lifecycle COMMAND gtg_tests)
+    add_test(NAME gtg.fixed_timestep COMMAND gtg_tests)
 endif()

@@ -3,9 +3,9 @@
 GTG è un gioco strategico didattico scritto in C17 con raylib, ispirato
 all'estetica dei terminali WOPR del film *WarGames*.
 
-Il progetto è sviluppato per round incrementali. Il Round 02 introduce la
-finestra raylib, una configurazione validata e il ciclo di vita esplicito delle
-risorse; la logica di gioco verrà aggiunta nei round successivi.
+Il progetto è sviluppato per round incrementali. Il Round 03 introduce un game
+loop a passo fisso, una macchina a stati applicativa e un overlay diagnostico;
+la logica del mondo verrà aggiunta nei round successivi.
 
 ## Requisiti
 
@@ -48,6 +48,18 @@ cmake --build --preset release
 Il programma apre una finestra ridimensionabile con lo sfondo WOPR iniziale. Si
 chiude con `Esc` o con il pulsante di chiusura della finestra.
 
+Controlli disponibili:
+
+- `Invio`: passa dal menu allo stato di gioco;
+- `P`: mette in pausa o riprende gli aggiornamenti logici;
+- `N`: avanza di un singolo tick mentre il gioco è in pausa;
+- `Q`: passa allo stato di uscita e chiude il programma.
+
+L'overlay mostra stato, FPS, tick/s, tick totali, tick eseguiti nell'ultimo
+frame e fattore di interpolazione. Il rendering resta attivo durante la pausa;
+il testo diagnostico usa campi a larghezza fissa e viene aggiornato quattro
+volte al secondo per evitare sfarfallii, senza rallentare il game loop.
+
 Per aprire la finestra, disegnare un solo frame e terminare automaticamente:
 
 ```sh
@@ -60,8 +72,10 @@ Per aprire la finestra, disegnare un solo frame e terminare automaticamente:
 ctest --preset debug
 ```
 
-I test del ciclo di vita usano un backend finto: verificano inizializzazione,
-esecuzione ripetuta e cleanup degli errori senza richiedere un contesto grafico.
+I test usano un backend finto e non richiedono un contesto grafico. Verificano
+il lifecycle, il cleanup degli errori, l'indipendenza dei tick dal frame rate,
+la pausa, il single-step, le transizioni di stato e il limite applicato ai frame
+eccezionalmente lunghi.
 
 ## Struttura iniziale
 

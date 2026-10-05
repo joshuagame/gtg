@@ -1,5 +1,6 @@
 #include "app/app_config.h"
 
+#include <math.h>
 #include <stddef.h>
 
 enum
@@ -9,6 +10,8 @@ enum
     APP_MAX_WINDOW_DIMENSION = 16384,
     APP_MIN_TARGET_FPS = 1,
     APP_MAX_TARGET_FPS = 1000,
+    APP_MIN_SIMULATION_HZ = 1,
+    APP_MAX_SIMULATION_HZ = 240,
 };
 
 AppConfig app_config_default(void)
@@ -17,6 +20,8 @@ AppConfig app_config_default(void)
         .window_width = 1280,
         .window_height = 720,
         .target_fps = 60,
+        .simulation_hz = 30,
+        .max_frame_seconds = 0.25,
         .window_title = "GTG - Guerra Termonucleare Globale",
         .resizable = true,
         .fullscreen = false,
@@ -43,5 +48,17 @@ bool app_config_is_valid(const AppConfig *config)
         return false;
     }
 
-    return config->target_fps >= APP_MIN_TARGET_FPS && config->target_fps <= APP_MAX_TARGET_FPS;
+    if (config->target_fps < APP_MIN_TARGET_FPS || config->target_fps > APP_MAX_TARGET_FPS)
+    {
+        return false;
+    }
+
+    if (config->simulation_hz < APP_MIN_SIMULATION_HZ ||
+        config->simulation_hz > APP_MAX_SIMULATION_HZ)
+    {
+        return false;
+    }
+
+    return isfinite(config->max_frame_seconds) && config->max_frame_seconds > 0.0 &&
+           config->max_frame_seconds <= 1.0;
 }

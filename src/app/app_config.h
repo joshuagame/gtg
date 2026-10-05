@@ -9,6 +9,8 @@ typedef struct
     int window_width;
     int window_height;
     int target_fps;
+    int simulation_hz;
+    double max_frame_seconds;
     const char *window_title;
     bool resizable;
     bool fullscreen;
