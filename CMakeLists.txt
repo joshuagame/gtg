@@ -52,7 +52,26 @@ if(TARGET raylib AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
     target_compile_options(raylib PRIVATE -Wno-tautological-compare)
 endif()
 
-add_executable(gtg src/main.c)
+add_library(
+    gtg_core
+    STATIC
+        src/app/app.c
+        src/app/app_config.c
+        src/resources/resources.c
+)
+target_include_directories(gtg_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(gtg_core PRIVATE c_std_17)
+set_target_properties(
+    gtg_core
+    PROPERTIES
+        C_STANDARD 17
+        C_STANDARD_REQUIRED ON
+        C_EXTENSIONS OFF
+)
+gtg_enable_warnings(gtg_core)
+
+add_executable(gtg src/main.c src/app/app_raylib.c)
+target_include_directories(gtg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(gtg PRIVATE c_std_17)
 set_target_properties(
     gtg
@@ -61,11 +80,12 @@ set_target_properties(
         C_STANDARD_REQUIRED ON
         C_EXTENSIONS OFF
 )
-target_link_libraries(gtg PRIVATE raylib)
+target_link_libraries(gtg PRIVATE gtg_core raylib)
 gtg_enable_warnings(gtg)
 
 if(BUILD_TESTING)
     add_executable(gtg_tests src/tests/test_main.c)
+    target_include_directories(gtg_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_features(gtg_tests PRIVATE c_std_17)
     set_target_properties(
         gtg_tests
@@ -74,7 +94,8 @@ if(BUILD_TESTING)
             C_STANDARD_REQUIRED ON
             C_EXTENSIONS OFF
     )
+    target_link_libraries(gtg_tests PRIVATE gtg_core)
     gtg_enable_warnings(gtg_tests)
 
-    add_test(NAME gtg.bootstrap COMMAND gtg_tests)
+    add_test(NAME gtg.lifecycle COMMAND gtg_tests)
 endif()

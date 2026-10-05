@@ -3,9 +3,9 @@
 GTG è un gioco strategico didattico scritto in C17 con raylib, ispirato
 all'estetica dei terminali WOPR del film *WarGames*.
 
-Il progetto è sviluppato per round incrementali. Il Round 01 fornisce una base
-compilabile, riproducibile e priva di logica di gioco; la finestra raylib e il
-ciclo di vita grafico verranno introdotti nel Round 02.
+Il progetto è sviluppato per round incrementali. Il Round 02 introduce la
+finestra raylib, una configurazione validata e il ciclo di vita esplicito delle
+risorse; la logica di gioco verrà aggiunta nei round successivi.
 
 ## Requisiti
 
@@ -45,8 +45,14 @@ cmake --build --preset release
 ./build/debug/gtg
 ```
 
-Nel Round 01 il programma stampa un messaggio di conferma e termina senza
-aprire una finestra.
+Il programma apre una finestra ridimensionabile con lo sfondo WOPR iniziale. Si
+chiude con `Esc` o con il pulsante di chiusura della finestra.
+
+Per aprire la finestra, disegnare un solo frame e terminare automaticamente:
+
+```sh
+./build/debug/gtg --smoke-test
+```
 
 ## Test
 
@@ -54,8 +60,8 @@ aprire una finestra.
 ctest --preset debug
 ```
 
-Il test di bootstrap è indipendente da raylib e non richiede un contesto
-grafico.
+I test del ciclo di vita usano un backend finto: verificano inizializzazione,
+esecuzione ripetuta e cleanup degli errori senza richiedere un contesto grafico.
 
 ## Struttura iniziale
 
@@ -66,6 +72,16 @@ grafico.
 ├── assets/
 ├── src/
 │   ├── main.c
+│   ├── app/
+│   │   ├── app.c
+│   │   ├── app.h
+│   │   ├── app_config.c
+│   │   ├── app_config.h
+│   │   ├── app_internal.h
+│   │   └── app_raylib.c
+│   ├── resources/
+│   │   ├── resources.c
+│   │   └── resources.h
 │   └── tests/
 │       └── test_main.c
 └── README.md
