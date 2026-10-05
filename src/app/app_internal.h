@@ -3,6 +3,7 @@
 
 #include "app/app.h"
 #include "resources/resources.h"
+#include "ui/console.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,6 +18,7 @@ typedef enum
 
 typedef struct
 {
+    ConsoleInput console;
     bool toggle_pause;
     bool step_once;
     bool start_game;
@@ -25,6 +27,7 @@ typedef struct
 
 typedef struct
 {
+    const Console *console;
     AppState state;
     bool paused;
     uint64_t tick_count;

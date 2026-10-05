@@ -8,6 +8,7 @@ typedef struct
 {
     AppConfig config;
     Resources resources;
+    Console console;
     AppState state;
     bool window_initialized;
     bool resources_loaded;
@@ -59,6 +60,12 @@ static AppInput app_read_input(const AppBackend *backend)
 
 static void app_handle_input(App *app, AppInput input)
 {
+    if (console_handle_input(&app->console, &input.console) == CONSOLE_ACTION_QUIT)
+    {
+        app->state = APP_STATE_EXIT;
+        return;
+    }
+
     if (input.exit_requested)
     {
         app->state = APP_STATE_EXIT;
@@ -148,6 +155,7 @@ static float app_interpolation_alpha(const App *app)
 static void app_draw(const App *app, const AppBackend *backend)
 {
     const AppView view = {
+        .console = &app->console,
         .state = app->state,
         .paused = app->paused,
         .tick_count = app->tick_count,
@@ -181,6 +189,7 @@ AppResult app_run_with_backend(const AppConfig *config, const AppBackend *backen
     app.config = *config;
     app.state = APP_STATE_BOOT;
     app.tick_seconds = 1.0 / (double)app.config.simulation_hz;
+    console_init(&app.console);
 
     backend->configure_window(backend->context, app.config.resizable, app.config.fullscreen);
     backend->init_window(backend->context, app.config.window_width, app.config.window_height,
@@ -214,6 +223,7 @@ AppResult app_run_with_backend(const AppConfig *config, const AppBackend *backen
             break;
         }
 
+        console_update_animation(&app.console, frame_seconds);
         app_run_fixed_updates(&app, frame_seconds);
         app_draw(&app, backend);
         app.frames_drawn += 1U;

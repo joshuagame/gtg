@@ -58,6 +58,7 @@ add_library(
         src/app/app.c
         src/app/app_config.c
         src/resources/resources.c
+        src/ui/console.c
 )
 target_include_directories(gtg_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(gtg_core PRIVATE c_std_17)

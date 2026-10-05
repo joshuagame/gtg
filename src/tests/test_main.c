@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 enum
 {
@@ -51,6 +52,7 @@ static int failures = 0;
     test_expect_equal_state((expected), (actual), #actual, __LINE__)
 #define EXPECT_NEAR(expected, actual, tolerance)                                                   \
     test_expect_near((expected), (actual), (tolerance), #actual, __LINE__)
+#define EXPECT_STREQ(expected, actual) test_expect_string((expected), (actual), #actual, __LINE__)
 
 static void test_expect_true(bool condition, const char *expression, int line)
 {
@@ -113,6 +115,17 @@ static void test_expect_near(double expected, double actual, double tolerance,
     if (difference > tolerance)
     {
         fprintf(stderr, "FAIL line %d: expected %s near %.6f, got %.6f\n", line, expression,
+                expected, actual);
+        failures += 1;
+    }
+}
+
+static void test_expect_string(const char *expected, const char *actual, const char *expression,
+                               int line)
+{
+    if (strcmp(expected, actual) != 0)
+    {
+        fprintf(stderr, "FAIL line %d: expected %s to be \"%s\", got \"%s\"\n", line, expression,
                 expected, actual);
         failures += 1;
     }
@@ -448,6 +461,136 @@ static void test_window_failure_uses_cleanup_path(void)
     EXPECT_EQ_UINT(1U, runtime.close_calls);
 }
 
+static ConsoleAction console_submit(Console *console, const char *text)
+{
+    ConsoleInput input = {0};
+    const size_t length = strlen(text);
+
+    EXPECT_TRUE(length < sizeof(input.text));
+    if (length >= sizeof(input.text))
+    {
+        return CONSOLE_ACTION_NONE;
+    }
+    (void)memcpy(input.text, text, length);
+    input.text_length = length;
+    input.submit = true;
+    return console_handle_input(console, &input);
+}
+
+static void test_console_starts_with_wopr_greeting(void)
+{
+    Console console;
+    console_init(&console);
+
+    EXPECT_EQ_UINT(3U, (unsigned int)console_output_count(&console));
+    EXPECT_STREQ("GREETINGS PROFESSOR FALKEN.", console_output_line(&console, 0U)->text);
+    EXPECT_TRUE(console_typing_enabled(&console));
+}
+
+static void test_console_commands_are_case_insensitive(void)
+{
+    Console console;
+    console_init(&console);
+
+    EXPECT_TRUE(console_submit(&console, "  help  ") == CONSOLE_ACTION_NONE);
+    EXPECT_EQ_UINT(8U, (unsigned int)console_output_count(&console));
+    EXPECT_STREQ("AVAILABLE COMMANDS:", console_output_line(&console, 3U)->text);
+
+    (void)console_submit(&console, "clear");
+    EXPECT_EQ_UINT(0U, (unsigned int)console_output_count(&console));
+
+    (void)console_submit(&console, "About");
+    EXPECT_EQ_UINT(2U, (unsigned int)console_output_count(&console));
+    EXPECT_STREQ("WOPR // GLOBAL THERMONUCLEAR WAR", console_output_line(&console, 0U)->text);
+    EXPECT_TRUE(console_submit(&console, "quit") == CONSOLE_ACTION_QUIT);
+}
+
+static void test_console_input_is_bounded(void)
+{
+    Console console;
+    ConsoleInput input = {0};
+    console_init(&console);
+    (void)memset(input.text, 'X', sizeof(input.text));
+    input.text_length = sizeof(input.text);
+
+    for (unsigned int iteration = 0U; iteration < 8U; iteration += 1U)
+    {
+        (void)console_handle_input(&console, &input);
+    }
+
+    EXPECT_EQ_UINT(CONSOLE_INPUT_CAPACITY - 1U, (unsigned int)console_input_length(&console));
+    EXPECT_TRUE(console_input_text(&console)[CONSOLE_INPUT_CAPACITY - 1U] == '\0');
+}
+
+static void test_console_history_can_be_navigated(void)
+{
+    Console console;
+    ConsoleInput history = {0};
+    console_init(&console);
+    (void)console_submit(&console, "help");
+    (void)console_submit(&console, "about");
+
+    history.history_previous = true;
+    (void)console_handle_input(&console, &history);
+    EXPECT_STREQ("about", console_input_text(&console));
+    (void)console_handle_input(&console, &history);
+    EXPECT_STREQ("help", console_input_text(&console));
+
+    history.history_previous = false;
+    history.history_next = true;
+    (void)console_handle_input(&console, &history);
+    EXPECT_STREQ("about", console_input_text(&console));
+    (void)console_handle_input(&console, &history);
+    EXPECT_STREQ("", console_input_text(&console));
+}
+
+static void test_console_typewriter_is_frame_driven_and_optional(void)
+{
+    Console console;
+    const ConsoleLine *first_line = NULL;
+    console_init(&console);
+    first_line = console_output_line(&console, 0U);
+
+    EXPECT_EQ_UINT(0U, (unsigned int)first_line->visible_length);
+    console_update_animation(&console, 1.0 / 72.0);
+    EXPECT_EQ_UINT(1U, (unsigned int)first_line->visible_length);
+
+    console_set_typing_enabled(&console, false);
+    EXPECT_EQ_UINT((unsigned int)first_line->length, (unsigned int)first_line->visible_length);
+    EXPECT_TRUE(!console_typing_enabled(&console));
+}
+
+static void test_console_output_is_a_bounded_ring(void)
+{
+    Console console;
+    console_init(&console);
+
+    for (unsigned int iteration = 0U; iteration < CONSOLE_OUTPUT_CAPACITY + 8U; iteration += 1U)
+    {
+        (void)console_submit(&console, "unknown");
+    }
+
+    EXPECT_EQ_UINT(CONSOLE_OUTPUT_CAPACITY, (unsigned int)console_output_count(&console));
+    EXPECT_STREQ("UNKNOWN COMMAND: UNKNOWN", console_output_line(&console, 0U)->text);
+}
+
+static void test_quit_command_exits_through_application_lifecycle(void)
+{
+    AppConfig config = app_config_default();
+    FakeRuntime runtime = fake_runtime_default();
+    const AppBackend backend = fake_backend(&runtime);
+    config.frame_limit = 2U;
+    (void)memcpy(runtime.inputs[0].console.text, "quit", 4U);
+    runtime.inputs[0].console.text_length = 4U;
+    runtime.inputs[0].console.submit = true;
+    runtime.input_count = 1U;
+
+    EXPECT_EQ_RESULT(APP_RESULT_OK, app_run_with_backend(&config, &backend));
+    EXPECT_EQ_UINT(0U, runtime.overlay_calls);
+    EXPECT_EQ_UINT(1U, runtime.unload_calls);
+    EXPECT_EQ_UINT(1U, runtime.close_calls);
+}
+
 int main(void)
 {
     test_c17_is_enabled();
@@ -461,6 +604,13 @@ int main(void)
     test_long_frame_is_clamped();
     test_resource_failure_closes_window();
     test_window_failure_uses_cleanup_path();
+    test_console_starts_with_wopr_greeting();
+    test_console_commands_are_case_insensitive();
+    test_console_input_is_bounded();
+    test_console_history_can_be_navigated();
+    test_console_typewriter_is_frame_driven_and_optional();
+    test_console_output_is_a_bounded_ring();
+    test_quit_command_exits_through_application_lifecycle();
 
     if (failures != 0)
     {
@@ -468,6 +618,6 @@ int main(void)
         return 1;
     }
 
-    puts("PASS: GTG fixed-timestep and lifecycle tests");
+    puts("PASS: GTG lifecycle, fixed-timestep, and console tests");
     return 0;
 }
