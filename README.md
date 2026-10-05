@@ -3,9 +3,9 @@
 GTG è un gioco strategico didattico scritto in C17 con raylib, ispirato
 all'estetica dei terminali WOPR del film *WarGames*.
 
-Il progetto è sviluppato per round incrementali. Il Round 04 aggiunge una shell
-WOPR interattiva sopra il game loop a passo fisso; la logica del mondo verrà
-aggiunta nei round successivi.
+Il progetto è sviluppato per round incrementali. Il Round 05 aggiunge il modello
+del mondo indipendente dal renderer: fazioni, regioni, bersagli, piattaforme e
+attacchi in volo sono rappresentati da strutture C17 a capacità fissa.
 
 ## Requisiti
 
@@ -88,7 +88,24 @@ ctest --preset debug
 I test usano un backend finto e non richiedono un contesto grafico. Verificano
 il lifecycle, il cleanup degli errori, l'indipendenza dei tick dal frame rate,
 la pausa, il single-step, le transizioni di stato, il limite applicato ai frame
-eccezionalmente lunghi e il comportamento della console bounded.
+eccezionalmente lunghi e il comportamento della console bounded. Il target
+`gtg_world_tests`, collegato soltanto alla libreria `gtg_world`, verifica inoltre
+fixture, coordinate normalizzate, relazioni tra entità e rigetto degli ID non
+validi senza dipendere da raylib.
+
+## Modello del mondo
+
+Gli ID di fazione, regione, bersaglio, piattaforma e attacco sono tipi distinti:
+il compilatore può quindi intercettare lo scambio accidentale tra categorie. Le
+query restituiscono puntatori `const` e verificano sia il range sia la
+corrispondenza fra ID e slot prima di accedere agli array.
+
+`World` conserva le entità in array contigui a capacità fissa. Questa scelta
+rende il costo della memoria prevedibile, evita allocazioni durante la
+simulazione e favorisce accessi sequenziali cache-friendly. `world_validate()`
+controlla conteggi, riferimenti, percentuali, coordinate e terminazione delle
+stringhe; `world_assert_valid()` rende immediatamente visibili le violazioni
+nelle build con assertion abilitate.
 
 ## Struttura iniziale
 
@@ -112,8 +129,12 @@ eccezionalmente lunghi e il comportamento della console bounded.
 │   ├── ui/
 │   │   ├── console.c
 │   │   └── console.h
+│   ├── world/
+│   │   ├── world.c
+│   │   └── world.h
 │   └── tests/
-│       └── test_main.c
+│       ├── test_main.c
+│       └── test_world.c
 └── README.md
 ```
 

@@ -52,6 +52,18 @@ if(TARGET raylib AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
     target_compile_options(raylib PRIVATE -Wno-tautological-compare)
 endif()
 
+add_library(gtg_world STATIC src/world/world.c)
+target_include_directories(gtg_world PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(gtg_world PRIVATE c_std_17)
+set_target_properties(
+    gtg_world
+    PROPERTIES
+        C_STANDARD 17
+        C_STANDARD_REQUIRED ON
+        C_EXTENSIONS OFF
+)
+gtg_enable_warnings(gtg_world)
+
 add_library(
     gtg_core
     STATIC
@@ -99,4 +111,19 @@ if(BUILD_TESTING)
     gtg_enable_warnings(gtg_tests)
 
     add_test(NAME gtg.fixed_timestep COMMAND gtg_tests)
+
+    add_executable(gtg_world_tests src/tests/test_world.c)
+    target_include_directories(gtg_world_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_features(gtg_world_tests PRIVATE c_std_17)
+    set_target_properties(
+        gtg_world_tests
+        PROPERTIES
+            C_STANDARD 17
+            C_STANDARD_REQUIRED ON
+            C_EXTENSIONS OFF
+    )
+    target_link_libraries(gtg_world_tests PRIVATE gtg_world)
+    gtg_enable_warnings(gtg_world_tests)
+
+    add_test(NAME gtg.world_domain COMMAND gtg_world_tests)
 endif()
